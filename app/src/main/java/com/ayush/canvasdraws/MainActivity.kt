@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity() {
                             selectedTextElement = state.selectedTextId?.let { id ->
                                 state.textElements.find { it.id == id }
                             },
-                            onUpdateTextStyle = { color, fontSize, isBold, isItalic, isUnderline ->
+                            onUpdateTextStyle = { color, fontSize, isBold, isItalic, isUnderline , fontFamily ->
                                 state.selectedTextId?.let { id ->
                                     viewModel.onAction(
                                         DrawingAction.OnUpdateTextStyle(
@@ -104,7 +104,9 @@ class MainActivity : ComponentActivity() {
                                             fontSize = fontSize,
                                             isBold = isBold,
                                             isItalic = isItalic,
-                                            isUnderline = isUnderline
+                                            isUnderline = isUnderline,
+                                            fontFamily =  fontFamily
+
                                         )
                                     )
                                 }

@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import androidx.compose.ui.text.font.FontFamily
 
 data class DrawingState(
     val selectedColor: Color = Color.Black,
@@ -58,7 +59,8 @@ sealed interface DrawingAction {
         val fontSize: Float? = null,
         val isBold: Boolean? = null,
         val isItalic: Boolean? = null,
-        val isUnderline: Boolean? = null
+        val isUnderline: Boolean? = null,
+        val fontFamily: FontFamily? = null
     ) : DrawingAction
     data class OnSelectText(val id: String?) : DrawingAction
     data class OnMoveText(val id: String, val newPosition: Offset) : DrawingAction
@@ -80,7 +82,8 @@ data class TextElement(
     val fontSize: Float = 16f,
     val isBold: Boolean = false,
     val isItalic: Boolean = false,
-    val isUnderline: Boolean = false
+    val isUnderline: Boolean = false,
+    val fontFamily: FontFamily = FontFamily.Default
 )
 
 class DrawingViewModel: ViewModel() {
@@ -103,7 +106,8 @@ class DrawingViewModel: ViewModel() {
                 fontSize = action.fontSize,
                 isBold = action.isBold,
                 isItalic = action.isItalic,
-                isUnderline = action.isUnderline
+                isUnderline = action.isUnderline,
+                fontFamily = action.fontFamily
             )
             is DrawingAction.OnSelectText -> onSelectText(action.id)
             is DrawingAction.OnMoveText -> onMoveText(action.id, action.newPosition)
@@ -111,6 +115,7 @@ class DrawingViewModel: ViewModel() {
             is DrawingAction.OnCanvasSizeChanged -> onCanvasSizeChanged(action.width, action.height)
             DrawingAction.OnUndo -> onUndo()
             DrawingAction.OnRedo -> onRedo()
+
 
 
         }
@@ -251,7 +256,8 @@ class DrawingViewModel: ViewModel() {
         fontSize: Float?,
         isBold: Boolean?,
         isItalic: Boolean?,
-        isUnderline: Boolean?
+        isUnderline: Boolean?,
+        fontFamily: FontFamily?  // Add this parameter
     ) {
         _state.update { state ->
             val updatedElements = state.textElements.map { element ->
@@ -261,7 +267,8 @@ class DrawingViewModel: ViewModel() {
                         fontSize = fontSize ?: element.fontSize,
                         isBold = isBold ?: element.isBold,
                         isItalic = isItalic ?: element.isItalic,
-                        isUnderline = isUnderline ?: element.isUnderline
+                        isUnderline = isUnderline ?: element.isUnderline,
+                        fontFamily = fontFamily ?: element.fontFamily  // Add this
                     )
                 } else element
             }

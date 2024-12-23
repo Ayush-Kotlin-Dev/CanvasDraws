@@ -129,6 +129,7 @@ fun DrawingCanvas(
                 text = textElement.text,
                 color = textElement.color,
                 fontSize = textElement.fontSize.sp,
+                fontFamily = textElement.fontFamily,
                 fontWeight = if (textElement.isBold) FontWeight.Bold else FontWeight.Normal,
                 fontStyle = if (textElement.isItalic) FontStyle.Italic else FontStyle.Normal,
                 textDecoration = if (textElement.isUnderline) TextDecoration.Underline else TextDecoration.None,

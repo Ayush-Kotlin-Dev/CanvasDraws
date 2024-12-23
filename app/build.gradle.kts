@@ -59,5 +59,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation("androidx.compose.material:material-icons-extended:1.7.6")
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.7.6")
+    implementation("androidx.compose.ui:ui-text:1.7.6")
 
 }

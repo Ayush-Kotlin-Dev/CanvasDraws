@@ -24,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.FormatBold
@@ -57,6 +58,19 @@ import androidx.compose.ui.util.fastForEach
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.TextFormat
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
+
+private val availableFonts = listOf(
+    FontFamily.Default to "Default",
+    FontFamily.Serif to "Serif",
+    FontFamily.SansSerif to "Sans Serif",
+    FontFamily.Monospace to "Monospace",
+    FontFamily.Cursive to "Cursive"
+)
 
 @Composable
 private fun ColorControls(
@@ -105,11 +119,14 @@ private fun TextControls(
         fontSize: Float?,
         isBold: Boolean?,
         isItalic: Boolean?,
-        isUnderline: Boolean?
+        isUnderline: Boolean?,
+        fontFamily: FontFamily?
     ) -> Unit,
     onDeleteText: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var expandedFontDropdown by remember { mutableStateOf(false) }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -117,6 +134,50 @@ private fun TextControls(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Box {
+            IconButton(onClick = { expandedFontDropdown = true }) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.TextFormat,
+                        contentDescription = "Change font family"
+                    )
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            DropdownMenu(
+                expanded = expandedFontDropdown,
+                onDismissRequest = { expandedFontDropdown = false }
+            ) {
+                availableFonts.forEach { (font, name) ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = name,
+                                fontFamily = font,
+                                color = if (selectedTextElement.fontFamily == font)
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        onClick = {
+                            onUpdateTextStyle(
+                                null, null, null,
+                                null, null, font
+                            )
+                            expandedFontDropdown = false
+                        }
+                    )
+                }
+            }
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -126,7 +187,7 @@ private fun TextControls(
                     onUpdateTextStyle(
                         null,
                         (selectedTextElement.fontSize - 2f).coerceAtLeast(12f),
-                        null, null, null
+                        null, null, null , null
                     )
                 }
             ) {
@@ -141,7 +202,7 @@ private fun TextControls(
                     onUpdateTextStyle(
                         null,
                         (selectedTextElement.fontSize + 2f).coerceAtMost(32f),
-                        null, null, null
+                        null, null, null , null
                     )
                 }
             ) {
@@ -153,7 +214,7 @@ private fun TextControls(
             modifier = Modifier.horizontalScroll(rememberScrollState())
         ) {
             IconButton(
-                onClick = { onUpdateTextStyle(null, null, !selectedTextElement.isBold, null, null) }
+                onClick = { onUpdateTextStyle(null, null, !selectedTextElement.isBold, null, null, null) }
             ) {
                 Icon(
                     Icons.Outlined.FormatBold,
@@ -168,6 +229,7 @@ private fun TextControls(
                         null,
                         null,
                         !selectedTextElement.isItalic,
+                        null,
                         null
                     )
                 }
@@ -185,7 +247,8 @@ private fun TextControls(
                         null,
                         null,
                         null,
-                        !selectedTextElement.isUnderline
+                        !selectedTextElement.isUnderline,
+                        null
                     )
                 }
             ) {
@@ -220,7 +283,8 @@ fun ColumnScope.CanvasControls(
         fontSize: Float?,
         isBold: Boolean?,
         isItalic: Boolean?,
-        isUnderline: Boolean?
+        isUnderline: Boolean?,
+        fontFamily: FontFamily?
     ) -> Unit,
     onDeleteText: () -> Unit,
     modifier: Modifier = Modifier
