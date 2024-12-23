@@ -1,5 +1,12 @@
 package com.ayush.canvasdraws
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -50,13 +57,47 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun ColumnScope.CanvasControls(
+private fun ColorControls(
     selectedColor: Color,
     colors: List<Color>,
     onSelectColor: (Color) -> Unit,
-    onClearCanvas: () -> Unit,
-    onAddText: () -> Unit,
-    selectedTextElement: TextElement?, 
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+    ) {
+        colors.fastForEach { color ->
+            val isSelected = selectedColor == color
+            Box(
+                modifier = Modifier
+                    .graphicsLayer {
+                        val scale = if(isSelected) 1.2f else 1f
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(color)
+                    .border(
+                        width = 2.dp,
+                        color = if(selectedColor == color) Color.Black else Color.Transparent,
+                        shape = CircleShape
+                    )
+                    .clickable { onSelectColor(color) }
+                    .semantics {
+                        contentDescription = "Select color $color"
+                    }
+            )
+        }
+    }
+}
+
+@Composable
+private fun TextControls(
+    selectedTextElement: TextElement,
     onUpdateTextStyle: (
         color: Color?,
         fontSize: Float?,
@@ -64,7 +105,106 @@ fun ColumnScope.CanvasControls(
         isItalic: Boolean?,
         isUnderline: Boolean?
     ) -> Unit,
-    onDeleteText: () -> Unit, 
+    onDeleteText: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            IconButton(
+                onClick = {
+                    onUpdateTextStyle(
+                        null,
+                        (selectedTextElement.fontSize - 2f).coerceAtLeast(12f),
+                        null, null, null
+                    )
+                }
+            ) {
+                Icon(Icons.Default.Remove, "Decrease font size")
+            }
+            Text(
+                text = "${selectedTextElement.fontSize.toInt()}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            IconButton(
+                onClick = {
+                    onUpdateTextStyle(
+                        null,
+                        (selectedTextElement.fontSize + 2f).coerceAtMost(32f),
+                        null, null, null
+                    )
+                }
+            ) {
+                Icon(Icons.Default.Add, "Increase font size")
+            }
+        }
+
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState())
+        ) {
+            IconButton(
+                onClick = { onUpdateTextStyle(null, null, !selectedTextElement.isBold, null, null) }
+            ) {
+                Icon(
+                    Icons.Outlined.FormatBold,
+                    contentDescription = "Bold",
+                    tint = if (selectedTextElement.isBold) MaterialTheme.colorScheme.primary else Color.Gray
+                )
+            }
+            IconButton(
+                onClick = { onUpdateTextStyle(null, null, null, !selectedTextElement.isItalic, null) }
+            ) {
+                Icon(
+                    Icons.Outlined.FormatItalic,
+                    contentDescription = "Italic",
+                    tint = if (selectedTextElement.isItalic) MaterialTheme.colorScheme.primary else Color.Gray
+                )
+            }
+            IconButton(
+                onClick = { onUpdateTextStyle(null, null, null, null, !selectedTextElement.isUnderline) }
+            ) {
+                Icon(
+                    Icons.Outlined.FormatUnderlined,
+                    contentDescription = "Underline",
+                    tint = if (selectedTextElement.isUnderline) MaterialTheme.colorScheme.primary else Color.Gray
+                )
+            }
+            IconButton(
+                onClick = onDeleteText,
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Icon(Icons.Default.Delete, "Delete text")
+            }
+        }
+    }
+}
+
+@Composable
+fun ColumnScope.CanvasControls(
+    selectedColor: Color,
+    colors: List<Color>,
+    onSelectColor: (Color) -> Unit,
+    onClearCanvas: () -> Unit,
+    onAddText: () -> Unit,
+    selectedTextElement: TextElement?,
+    onUpdateTextStyle: (
+        color: Color?,
+        fontSize: Float?,
+        isBold: Boolean?,
+        isItalic: Boolean?,
+        isUnderline: Boolean?
+    ) -> Unit,
+    onDeleteText: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showClearConfirmation by remember { mutableStateOf(false) }
@@ -72,120 +212,39 @@ fun ColumnScope.CanvasControls(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    if (selectedTextElement == null) {
-        // Show color controls when no text is selected
-        Row(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-        ) {
-            colors.fastForEach { color ->
-                val isSelected = selectedColor == color
-                Box(
-                    modifier = Modifier
-                        .graphicsLayer {
-                            val scale = if(isSelected) 1.2f else 1f
-                            scaleX = scale
-                            scaleY = scale
-                        }
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                        .border(
-                            width = 2.dp,
-                            color = if(selectedColor == color) Color.Black else Color.Transparent,
-                            shape = CircleShape
-                        )
-                        .clickable { onSelectColor(color) }
-                        .semantics {
-                            contentDescription = "Select color $color"
-                        }
+    // Animated content transition
+    AnimatedContent(
+        targetState = selectedTextElement,
+        transitionSpec = {
+            if (targetState != null) {
+                // Entering text controls (sliding from right)
+                (slideInHorizontally { width -> width } + fadeIn()).togetherWith(
+                    slideOutHorizontally { width -> -width } + fadeOut()
                 )
-            }
+            } else {
+                // Entering color controls (sliding from left)
+                (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(
+                    slideOutHorizontally { width -> width } + fadeOut()
+                )
+            }.using(
+                SizeTransform(clip = false)
+            )
         }
-    } else {
-        // Show text controls when text is selected
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                IconButton(
-                    onClick = {
-                        onUpdateTextStyle(
-                            null,
-                            (selectedTextElement.fontSize - 2f).coerceAtLeast(12f),
-                            null, null, null
-                        )
-                    }
-                ) {
-                    Icon(Icons.Default.Remove, "Decrease font size")
-                }
-                Text(
-                    text = "${selectedTextElement.fontSize.toInt()}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                IconButton(
-                    onClick = {
-                        onUpdateTextStyle(
-                            null,
-                            (selectedTextElement.fontSize + 2f).coerceAtMost(32f),
-                            null, null, null
-                        )
-                    }
-                ) {
-                    Icon(Icons.Default.Add, "Increase font size")
-                }
-            }
-
-            // Text style controls
-            Row(
-                modifier = Modifier
-                    .horizontalScroll(rememberScrollState()) 
-            ) {
-                IconButton(
-                    onClick = { onUpdateTextStyle(null, null, !selectedTextElement.isBold, null, null) }
-                ) {
-                    Icon(
-                        Icons.Outlined.FormatBold,
-                        contentDescription = "Bold",
-                        tint = if (selectedTextElement.isBold) MaterialTheme.colorScheme.primary else Color.Gray
-                    )
-                }
-                IconButton(
-                    onClick = { onUpdateTextStyle(null, null, null, !selectedTextElement.isItalic, null) }
-                ) {
-                    Icon(
-                        Icons.Outlined.FormatItalic,
-                        contentDescription = "Italic",
-                        tint = if (selectedTextElement.isItalic) MaterialTheme.colorScheme.primary else Color.Gray
-                    )
-                }
-                IconButton(
-                    onClick = { onUpdateTextStyle(null, null, null, null, !selectedTextElement.isUnderline) }
-                ) {
-                    Icon(
-                        Icons.Outlined.FormatUnderlined,
-                        contentDescription = "Underline",
-                        tint = if (selectedTextElement.isUnderline) MaterialTheme.colorScheme.primary else Color.Gray
-                    )
-                }
-                IconButton(
-                    onClick = onDeleteText,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Icon(Icons.Default.Delete, "Delete text")
-                }
-            }
+    ) { targetTextElement ->
+        if (targetTextElement == null) {
+            ColorControls(
+                selectedColor = selectedColor,
+                colors = colors,
+                onSelectColor = onSelectColor,
+                modifier = modifier
+            )
+        } else {
+            TextControls(
+                selectedTextElement = targetTextElement,
+                onUpdateTextStyle = onUpdateTextStyle,
+                onDeleteText = onDeleteText,
+                modifier = modifier
+            )
         }
     }
 
@@ -211,12 +270,10 @@ fun ColumnScope.CanvasControls(
         Button(
             onClick = {
                 if (showClearConfirmation) {
-                    // Second click - actually clear
                     clearConfirmationTimer?.cancel()
                     showClearConfirmation = false
                     onClearCanvas()
                 } else {
-                    // First click - show confirmation
                     showClearConfirmation = true
                     scope.launch {
                         snackbarHostState.showSnackbar(
@@ -224,7 +281,6 @@ fun ColumnScope.CanvasControls(
                             duration = SnackbarDuration.Short
                         )
                     }
-                    // Reset after 3 seconds
                     clearConfirmationTimer?.cancel()
                     clearConfirmationTimer = scope.launch {
                         delay(3000)
@@ -233,16 +289,16 @@ fun ColumnScope.CanvasControls(
                 }
             },
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (showClearConfirmation) 
-                    MaterialTheme.colorScheme.errorContainer 
+                containerColor = if (showClearConfirmation)
+                    MaterialTheme.colorScheme.errorContainer
                 else MaterialTheme.colorScheme.error
             ),
             modifier = Modifier.weight(1f)
         ) {
             Text(
                 if (showClearConfirmation) "Click to Confirm" else "Clear All",
-                color = if (showClearConfirmation) 
-                    MaterialTheme.colorScheme.onErrorContainer 
+                color = if (showClearConfirmation)
+                    MaterialTheme.colorScheme.onErrorContainer
                 else MaterialTheme.colorScheme.onError
             )
         }
