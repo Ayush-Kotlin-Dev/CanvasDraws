@@ -3,6 +3,7 @@ package com.ayush.canvasdraws
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
@@ -10,29 +11,43 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastForEach
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.FormatBold
 import androidx.compose.material.icons.outlined.FormatItalic
 import androidx.compose.material.icons.outlined.FormatUnderlined
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastForEach
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun ColumnScope.CanvasControls(
@@ -41,17 +56,22 @@ fun ColumnScope.CanvasControls(
     onSelectColor: (Color) -> Unit,
     onClearCanvas: () -> Unit,
     onAddText: () -> Unit,
-    selectedTextElement: TextElement?, // New parameter
-    onUpdateTextStyle: ( // New parameter
+    selectedTextElement: TextElement?, 
+    onUpdateTextStyle: (
         color: Color?,
         fontSize: Float?,
         isBold: Boolean?,
         isItalic: Boolean?,
         isUnderline: Boolean?
     ) -> Unit,
-    onDeleteText: () -> Unit, // New parameter
+    onDeleteText: () -> Unit, 
     modifier: Modifier = Modifier
 ) {
+    var showClearConfirmation by remember { mutableStateOf(false) }
+    var clearConfirmationTimer by remember { mutableStateOf<Job?>(null) }
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
     if (selectedTextElement == null) {
         // Show color controls when no text is selected
         Row(
@@ -78,6 +98,9 @@ fun ColumnScope.CanvasControls(
                             shape = CircleShape
                         )
                         .clickable { onSelectColor(color) }
+                        .semantics {
+                            contentDescription = "Select color $color"
+                        }
                 )
             }
         }
@@ -124,7 +147,8 @@ fun ColumnScope.CanvasControls(
 
             // Text style controls
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState()) 
             ) {
                 IconButton(
                     onClick = { onUpdateTextStyle(null, null, !selectedTextElement.isBold, null, null) }
@@ -165,6 +189,12 @@ fun ColumnScope.CanvasControls(
         }
     }
 
+    // Add SnackbarHost to show messages
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier.align(Alignment.CenterHorizontally)
+    )
+
     // Action buttons row
     Row(
         modifier = Modifier
@@ -179,10 +209,42 @@ fun ColumnScope.CanvasControls(
             Text("Add Text")
         }
         Button(
-            onClick = onClearCanvas,
+            onClick = {
+                if (showClearConfirmation) {
+                    // Second click - actually clear
+                    clearConfirmationTimer?.cancel()
+                    showClearConfirmation = false
+                    onClearCanvas()
+                } else {
+                    // First click - show confirmation
+                    showClearConfirmation = true
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Click again to clear canvas",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
+                    // Reset after 3 seconds
+                    clearConfirmationTimer?.cancel()
+                    clearConfirmationTimer = scope.launch {
+                        delay(3000)
+                        showClearConfirmation = false
+                    }
+                }
+            },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (showClearConfirmation) 
+                    MaterialTheme.colorScheme.errorContainer 
+                else MaterialTheme.colorScheme.error
+            ),
             modifier = Modifier.weight(1f)
         ) {
-            Text("Clear All")
+            Text(
+                if (showClearConfirmation) "Click to Confirm" else "Clear All",
+                color = if (showClearConfirmation) 
+                    MaterialTheme.colorScheme.onErrorContainer 
+                else MaterialTheme.colorScheme.onError
+            )
         }
     }
 }

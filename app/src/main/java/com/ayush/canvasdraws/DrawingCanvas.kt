@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -66,9 +68,11 @@ fun DrawingCanvas(
                             offset.x.roundToInt(),
                             offset.y.roundToInt()
                         )
+                        // Make hit box more proportional to text size
                         val xDiff = (clickPosition.x - textPosition.x)
                         val yDiff = (clickPosition.y - textPosition.y)
-                        xDiff in 0..100 && yDiff in -20..20
+                        xDiff in 0..((textElement.text.length * textElement.fontSize / 2).toInt()) &&
+                                yDiff.toFloat() in (-textElement.fontSize/2)..(textElement.fontSize/2)
                     }
 
                     if (!clickedOnText) {
@@ -140,6 +144,9 @@ fun DrawingCanvas(
                         onAction(DrawingAction.OnSelectText(textElement.id))
                     }
                     .border(if (isSelected) 1.dp else 0.dp, Color.Black)
+                    .semantics {
+                        contentDescription = "Editable text: ${textElement.text}"
+                    }
             )
         }
     }
