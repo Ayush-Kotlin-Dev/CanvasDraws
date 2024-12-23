@@ -142,7 +142,9 @@ class DrawingViewModel: ViewModel() {
     private fun onClearCanvasClick() {
         _state.update { it.copy(
             currentPath = null,
-            paths = emptyList()
+            paths = emptyList(),
+//            textElements = emptyList(),  TODO if want to clear text elements also on clear canvas
+//            selectedTextId = null
         ) }
     }
 

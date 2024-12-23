@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -231,68 +232,72 @@ fun ColumnScope.CanvasControls(
 
     val isTextMode = selectedTextElement != null
 
-    // Animated content transition
-    AnimatedContent(
-        targetState = isTextMode,
-        transitionSpec = {
-            if (targetState) {
-                (slideInHorizontally(
-                    animationSpec = tween(durationMillis = 300)
-                ) { width -> width } + fadeIn(
-                    animationSpec = tween(durationMillis = 300)
-                )).togetherWith(
-                    slideOutHorizontally(
-                        animationSpec = tween(durationMillis = 300)
-                    ) { width -> -width } + fadeOut(
-                        animationSpec = tween(durationMillis = 300)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+    ) {
+        AnimatedContent(
+            targetState = isTextMode,
+            transitionSpec = {
+                if (targetState) {
+                    slideInHorizontally(
+                        animationSpec = tween(durationMillis = 300),
+                        initialOffsetX = { fullWidth -> fullWidth }
+                    ).plus(fadeIn(animationSpec = tween(durationMillis = 150)))
+                    .togetherWith(
+                        slideOutHorizontally(
+                            animationSpec = tween(durationMillis = 300),
+                            targetOffsetX = { fullWidth -> -fullWidth }
+                        ).plus(fadeOut(animationSpec = tween(durationMillis = 150)))
                     )
-                )
-            } else {
-                (slideInHorizontally(
-                    animationSpec = tween(durationMillis = 300)
-                ) { width -> -width } + fadeIn(
-                    animationSpec = tween(durationMillis = 300)
-                )).togetherWith(
-                    slideOutHorizontally(
-                        animationSpec = tween(durationMillis = 300)
-                    ) { width -> width } + fadeOut(
-                        animationSpec = tween(
-                            durationMillis = 300
+                } else {
+                    slideInHorizontally(
+                        animationSpec = tween(durationMillis = 300),
+                        initialOffsetX = { fullWidth -> -fullWidth }
+                    ).plus(fadeIn(animationSpec = tween(durationMillis = 150)))
+                    .togetherWith(
+                        slideOutHorizontally(
+                            animationSpec = tween(durationMillis = 300),
+                            targetOffsetX = { fullWidth -> fullWidth }
+                        ).plus(fadeOut(animationSpec = tween(durationMillis = 150)))
+                    )
+                }
+            },
+            contentAlignment = Alignment.Center
+        ) { isInTextMode ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!isInTextMode) {
+                    ColorControls(
+                        selectedColor = selectedColor,
+                        colors = colors,
+                        onSelectColor = onSelectColor,
+                        modifier = modifier
+                    )
+                } else {
+                    selectedTextElement?.let { textElement ->
+                        TextControls(
+                            selectedTextElement = textElement,
+                            onUpdateTextStyle = onUpdateTextStyle,
+                            onDeleteText = onDeleteText,
+                            modifier = modifier
                         )
-                    )
-                )
-            }.using(
-                SizeTransform(clip = false)
-            )
-        }
-    ) { isInTextMode ->
-        if (!isInTextMode) {
-            ColorControls(
-                selectedColor = selectedColor,
-                colors = colors,
-                onSelectColor = onSelectColor,
-                modifier = modifier
-            )
-        } else {
-            // Only show TextControls if we have a valid selectedTextElement
-            selectedTextElement?.let { textElement ->
-                TextControls(
-                    selectedTextElement = textElement,
-                    onUpdateTextStyle = onUpdateTextStyle,
-                    onDeleteText = onDeleteText,
-                    modifier = modifier
-                )
+                    }
+                }
             }
         }
     }
 
-    // Add SnackbarHost to show messages
     SnackbarHost(
         hostState = snackbarHostState,
         modifier = Modifier.align(Alignment.CenterHorizontally)
     )
 
-    // Action buttons row
     Row(
         modifier = Modifier
             .fillMaxWidth()

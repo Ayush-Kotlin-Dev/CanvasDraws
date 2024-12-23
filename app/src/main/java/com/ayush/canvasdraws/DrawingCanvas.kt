@@ -116,6 +116,7 @@ fun DrawingCanvas(
             val isSelected = textElement.id == selectedTextId
             var offsetX by remember { mutableStateOf(textElement.position.x) }
             var offsetY by remember { mutableStateOf(textElement.position.y) }
+            var isDragging by remember { mutableStateOf(false) }
 
             Text(
                 text = textElement.text,
@@ -128,7 +129,9 @@ fun DrawingCanvas(
                     .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
                     .pointerInput(textElement.id) {
                         detectDragGestures(
+                            onDragStart = { isDragging = true },
                             onDragEnd = {
+                                isDragging = false
                                 onAction(DrawingAction.OnMoveText(
                                     id = textElement.id,
                                     newPosition = Offset(offsetX, offsetY)
@@ -143,7 +146,12 @@ fun DrawingCanvas(
                     .clickable {
                         onAction(DrawingAction.OnSelectText(textElement.id))
                     }
-                    .border(if (isSelected) 1.dp else 0.dp, Color.Black)
+                    // Optionally show border only when dragging or selected
+                    .then(
+                        if (isDragging || isSelected) {
+                            Modifier.border(0.5.dp, Color.Gray.copy(alpha = 0.5f))
+                        } else Modifier
+                    )
                     .semantics {
                         contentDescription = "Editable text: ${textElement.text}"
                     }
