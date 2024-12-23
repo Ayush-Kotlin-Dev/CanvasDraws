@@ -9,8 +9,12 @@ import kotlinx.coroutines.flow.update
 data class DrawingState(
     val selectedColor: Color = Color.Black,
     val currentPath: PathData? = null,
-    val paths: List<PathData> = emptyList()
+    val paths: List<PathData> = emptyList(),
+    val textElements: List<TextElement> = emptyList(),
+    val selectedTextId: String? = null,
+    val isAddingText: Boolean = false
 )
+
 
 val allColors = listOf(
     Color.Black,
@@ -28,14 +32,45 @@ data class PathData(
     val path: List<Offset>
 )
 
+
+
 sealed interface DrawingAction {
     data object OnNewPathStart: DrawingAction
     data class OnDraw(val offset: Offset): DrawingAction
     data object OnPathEnd: DrawingAction
     data class OnSelectColor(val color: Color): DrawingAction
     data object OnClearCanvasClick: DrawingAction
+
+    // Text Actions
+    data object OnAddTextClick : DrawingAction
+    data class OnTextClick(val position: Offset) : DrawingAction
+    data class OnUpdateText(val id: String, val newText: String) : DrawingAction
+    data class OnUpdateTextStyle(
+        val id: String,
+        val color: Color? = null,
+        val fontSize: Float? = null,
+        val isBold: Boolean? = null,
+        val isItalic: Boolean? = null,
+        val isUnderline: Boolean? = null
+    ) : DrawingAction
+    data class OnSelectText(val id: String?) : DrawingAction
+    data class OnMoveText(val id: String, val newPosition: Offset) : DrawingAction
+    data class OnDeleteText(val id: String) : DrawingAction
+
+
+
 }
 
+data class TextElement(
+    val id: String,
+    val text: String,
+    val position: Offset,
+    val color: Color = Color.Black,
+    val fontSize: Float = 16f,
+    val isBold: Boolean = false,
+    val isItalic: Boolean = false,
+    val isUnderline: Boolean = false
+)
 
 class DrawingViewModel: ViewModel() {
 
@@ -49,6 +84,21 @@ class DrawingViewModel: ViewModel() {
             DrawingAction.OnNewPathStart -> onNewPathStart()
             DrawingAction.OnPathEnd -> onPathEnd()
             is DrawingAction.OnSelectColor -> onSelectColor(action.color)
+            DrawingAction.OnAddTextClick -> onAddTextClick()
+            is DrawingAction.OnTextClick -> onTextClick(action.position)
+            is DrawingAction.OnUpdateText -> onUpdateText(action.id, action.newText)
+            is DrawingAction.OnUpdateTextStyle -> onUpdateTextStyle(
+                id = action.id,
+                color = action.color,
+                fontSize = action.fontSize,
+                isBold = action.isBold,
+                isItalic = action.isItalic,
+                isUnderline = action.isUnderline
+            )
+            is DrawingAction.OnSelectText -> onSelectText(action.id)
+            is DrawingAction.OnMoveText -> onMoveText(action.id, action.newPosition)
+            is DrawingAction.OnDeleteText -> onDeleteText(action.id)
+
         }
     }
 
@@ -72,7 +122,8 @@ class DrawingViewModel: ViewModel() {
                 id = System.currentTimeMillis().toString(),
                 color = it.selectedColor,
                 path = emptyList()
-            )
+            ),
+            selectedTextId = null
         ) }
     }
 
@@ -90,5 +141,80 @@ class DrawingViewModel: ViewModel() {
             currentPath = null,
             paths = emptyList()
         ) }
+    }
+
+    // Text Actions
+    private fun onAddTextClick() {
+        _state.update { it.copy(isAddingText = true) }
+    }
+
+    private fun onTextClick(position: Offset) {
+        if (state.value.isAddingText) {
+            val newText = TextElement(
+                id = System.currentTimeMillis().toString(),
+                text = "New Text",
+                position = position
+            )
+            _state.update { it.copy(
+                textElements = it.textElements + newText,
+                isAddingText = false,
+                selectedTextId = newText.id
+            ) }
+        }
+    }
+
+    private fun onUpdateText(id: String, newText: String) {
+        _state.update { state ->
+            val updatedElements = state.textElements.map { element ->
+                if (element.id == id) element.copy(text = newText) else element
+            }
+            state.copy(textElements = updatedElements)
+        }
+    }
+
+    private fun onUpdateTextStyle(
+        id: String,
+        color: Color?,
+        fontSize: Float?,
+        isBold: Boolean?,
+        isItalic: Boolean?,
+        isUnderline: Boolean?
+    ) {
+        _state.update { state ->
+            val updatedElements = state.textElements.map { element ->
+                if (element.id == id) {
+                    element.copy(
+                        color = color ?: element.color,
+                        fontSize = fontSize ?: element.fontSize,
+                        isBold = isBold ?: element.isBold,
+                        isItalic = isItalic ?: element.isItalic,
+                        isUnderline = isUnderline ?: element.isUnderline
+                    )
+                } else element
+            }
+            state.copy(textElements = updatedElements)
+        }
+    }
+
+    private fun onMoveText(id: String, newPosition: Offset) {
+        _state.update { state ->
+            val updatedElements = state.textElements.map { element ->
+                if (element.id == id) {
+                    element.copy(position = newPosition)
+                } else element
+            }
+            state.copy(textElements = updatedElements)
+        }
+    }
+    private fun onSelectText(id: String?) {
+        _state.update { it.copy(selectedTextId = id) }
+    }
+    private fun onDeleteText(id: String) {
+        _state.update { state ->
+            state.copy(
+                textElements = state.textElements.filter { it.id != id },
+                selectedTextId = null
+            )
+        }
     }
 }

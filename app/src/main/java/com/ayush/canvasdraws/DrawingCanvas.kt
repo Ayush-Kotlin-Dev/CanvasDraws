@@ -17,45 +17,128 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.util.fastForEach
 import kotlin.math.abs
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 
 @Composable
 fun DrawingCanvas(
     paths: List<PathData>,
     currentPath: PathData?,
+    textElements: List<TextElement>,
+    selectedTextId: String?,
+    isAddingText: Boolean,
     onAction: (DrawingAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Canvas(
-        modifier = modifier
-            .clipToBounds()
-            .background(Color.White)
-            .pointerInput(true) {
-                detectDragGestures(
-                    onDragStart = {
-                        onAction(DrawingAction.OnNewPathStart)
-                    },
-                    onDragEnd = {
-                        onAction(DrawingAction.OnPathEnd)
-                    },
-                    onDrag = { change, _ ->
-                        onAction(DrawingAction.OnDraw(change.position))
-                    },
-                    onDragCancel = {
-                        onAction(DrawingAction.OnPathEnd)
-                    },
-                )
-            }
-    ) {
-        paths.fastForEach { pathData ->
-            drawPath(
-                path = pathData.path,
-                color = pathData.color,
+    Box(modifier = modifier
+        .clipToBounds()
+        .background(Color.White)
+        .pointerInput(true) {
+            detectTapGestures(
+                onTap = { offset ->
+                    if (isAddingText) {
+                        onAction(DrawingAction.OnTextClick(offset))
+                    } else {
+                        // Check if we clicked on any text
+                        val clickedOnText = textElements.any { textElement ->
+                            val textPosition = IntOffset(
+                                textElement.position.x.roundToInt(),
+                                textElement.position.y.roundToInt()
+                            )
+                            val clickPosition = IntOffset(
+                                offset.x.roundToInt(),
+                                offset.y.roundToInt()
+                            )
+                            val xDiff = (clickPosition.x - textPosition.x)
+                            val yDiff = (clickPosition.y - textPosition.y)
+                            xDiff in 0..100 && yDiff in -20..20
+                        }
+
+                        if (!clickedOnText) {
+                            onAction(DrawingAction.OnSelectText(null))
+                            // Draw a point when tapping outside text
+                            onAction(DrawingAction.OnNewPathStart)
+                            onAction(DrawingAction.OnDraw(offset))
+                            onAction(DrawingAction.OnPathEnd)
+                        }
+                    }
+                }
             )
         }
-        currentPath?.let {
-            drawPath(
-                path = it.path,
-                color = it.color
+    ) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(true) {
+                    detectDragGestures(
+                        onDragStart = {
+                            // Deselect text when starting to draw
+                            onAction(DrawingAction.OnSelectText(null))
+                            onAction(DrawingAction.OnNewPathStart)
+                        },
+                        onDragEnd = { onAction(DrawingAction.OnPathEnd) },
+                        onDrag = { change, _ -> onAction(DrawingAction.OnDraw(change.position)) },
+                        onDragCancel = { onAction(DrawingAction.OnPathEnd) }
+                    )
+                }
+        ){
+            paths.fastForEach { pathData ->
+                drawPath(path = pathData.path, color = pathData.color)
+            }
+            currentPath?.let {
+                drawPath(path = it.path, color = it.color)
+            }
+        }
+
+        // Draw text elements
+        textElements.forEach { textElement ->
+            val isSelected = textElement.id == selectedTextId
+            var offsetX by remember { mutableStateOf(textElement.position.x) }
+            var offsetY by remember { mutableStateOf(textElement.position.y) }
+
+            Text(
+                text = textElement.text,
+                color = textElement.color,
+                fontSize = textElement.fontSize.sp,
+                fontWeight = if (textElement.isBold) FontWeight.Bold else FontWeight.Normal,
+                fontStyle = if (textElement.isItalic) FontStyle.Italic else FontStyle.Normal,
+                textDecoration = if (textElement.isUnderline) TextDecoration.Underline else TextDecoration.None,
+                modifier = Modifier
+                    .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                    .pointerInput(textElement.id) {
+                        detectDragGestures(
+                            onDragEnd = {
+                                onAction(DrawingAction.OnMoveText(
+                                    id = textElement.id,
+                                    newPosition = Offset(offsetX, offsetY)
+                                ))
+                            }
+                        ) { change, dragAmount ->
+                            change.consume()
+                            offsetX += dragAmount.x
+                            offsetY += dragAmount.y
+                        }
+                    }
+                    .clickable {
+                        onAction(DrawingAction.OnSelectText(textElement.id))
+                    }
+                    .border(if (isSelected) 1.dp else 0.dp, Color.Black)
             )
         }
     }
