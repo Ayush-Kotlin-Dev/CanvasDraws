@@ -114,8 +114,8 @@ fun DrawingCanvas(
         // Draw text elements
         textElements.forEach { textElement ->
             val isSelected = textElement.id == selectedTextId
-            var offsetX by remember { mutableStateOf(textElement.position.x) }
-            var offsetY by remember { mutableStateOf(textElement.position.y) }
+            var offsetX by remember(textElement.position.x) { mutableStateOf(textElement.position.x) }
+            var offsetY by remember(textElement.position.y) { mutableStateOf(textElement.position.y) }
             var isDragging by remember { mutableStateOf(false) }
 
             Text(

@@ -90,6 +90,13 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         )
+                        CanvasTopControls(
+                            canUndo = state.canUndo,
+                            canRedo = state.canRedo,
+                            onUndo = { viewModel.onAction(DrawingAction.OnUndo) },
+                            onRedo = { viewModel.onAction(DrawingAction.OnRedo) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         showTextEditor?.let { textId ->
                             state.textElements.find { it.id == textId }?.let { textElement ->
                                 SimpleTextEditDialog(

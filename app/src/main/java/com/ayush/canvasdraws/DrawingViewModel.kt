@@ -1,4 +1,5 @@
 package com.ayush.canvasdraws
+
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
@@ -13,7 +14,12 @@ data class DrawingState(
     val textElements: List<TextElement> = emptyList(),
     val selectedTextId: String? = null,
     val canvasWidth: Int = 0,
-    val canvasHeight: Int = 0
+    val canvasHeight: Int = 0,
+    // Add these for undo/redo
+    val textHistory: List<List<TextElement>> = listOf(emptyList()),
+    val currentHistoryIndex: Int = 0,
+    val canUndo: Boolean = false,  // Changed initial value
+    val canRedo: Boolean = false   // Changed initial value
 )
 
 
@@ -57,6 +63,8 @@ sealed interface DrawingAction {
     data class OnMoveText(val id: String, val newPosition: Offset) : DrawingAction
     data class OnDeleteText(val id: String) : DrawingAction
     data class OnCanvasSizeChanged(val width: Int, val height: Int) : DrawingAction
+    data object OnUndo : DrawingAction
+    data object OnRedo : DrawingAction
 
 
 
@@ -100,6 +108,8 @@ class DrawingViewModel: ViewModel() {
             is DrawingAction.OnMoveText -> onMoveText(action.id, action.newPosition)
             is DrawingAction.OnDeleteText -> onDeleteText(action.id)
             is DrawingAction.OnCanvasSizeChanged -> onCanvasSizeChanged(action.width, action.height)
+            DrawingAction.OnUndo -> onUndo()
+            DrawingAction.OnRedo -> onRedo()
 
 
         }
@@ -149,6 +159,57 @@ class DrawingViewModel: ViewModel() {
     }
 
     // Text Actions
+    private fun addToHistory(textElements: List<TextElement>) {
+        _state.update { currentState ->
+            // Remove any future history if we're not at the latest state
+            val newHistory = currentState.textHistory
+                .take(currentState.currentHistoryIndex + 1)
+                .toMutableList()
+
+            // Add new state
+            newHistory.add(textElements)
+            val newIndex = newHistory.size - 1
+
+            currentState.copy(
+                textHistory = newHistory,
+                currentHistoryIndex = newIndex,
+                canUndo = newIndex > 0,
+                canRedo = newIndex < newHistory.size - 1
+            )
+        }
+    }
+
+    private fun onUndo() {
+        _state.update { currentState ->
+            if (currentState.currentHistoryIndex > 0) {
+                val newIndex = currentState.currentHistoryIndex - 1
+                currentState.copy(
+                    textElements = currentState.textHistory[newIndex],
+                    currentHistoryIndex = newIndex,
+                    selectedTextId = null,
+                    canUndo = newIndex > 0,
+                    canRedo = true
+                )
+            } else currentState
+        }
+    }
+
+    private fun onRedo() {
+        _state.update { currentState ->
+            if (currentState.currentHistoryIndex < currentState.textHistory.size - 1) {
+                val newIndex = currentState.currentHistoryIndex + 1
+                currentState.copy(
+                    textElements = currentState.textHistory[newIndex],
+                    currentHistoryIndex = newIndex,
+                    selectedTextId = null,
+                    canUndo = true,
+                    canRedo = newIndex < currentState.textHistory.size - 1
+                )
+            } else currentState
+        }
+    }
+
+    // Modify existing text action handlers to add to history
     private fun onAddTextClick() {
         val centerX = state.value.canvasWidth / 2f
         val centerY = state.value.canvasHeight / 2f
@@ -163,8 +224,8 @@ class DrawingViewModel: ViewModel() {
             textElements = it.textElements + newText,
             selectedTextId = newText.id
         ) }
+        addToHistory(state.value.textElements)
     }
-
 
     private fun onUpdateText(id: String, newText: String) {
         _state.update { state ->
@@ -173,6 +234,7 @@ class DrawingViewModel: ViewModel() {
             }
             state.copy(textElements = updatedElements)
         }
+        addToHistory(state.value.textElements)
     }
 
     private fun onUpdateTextStyle(
@@ -197,6 +259,7 @@ class DrawingViewModel: ViewModel() {
             }
             state.copy(textElements = updatedElements)
         }
+        addToHistory(state.value.textElements)
     }
 
     private fun onMoveText(id: String, newPosition: Offset) {
@@ -208,10 +271,9 @@ class DrawingViewModel: ViewModel() {
             }
             state.copy(textElements = updatedElements)
         }
+        addToHistory(state.value.textElements)
     }
-    private fun onSelectText(id: String?) {
-        _state.update { it.copy(selectedTextId = id) }
-    }
+
     private fun onDeleteText(id: String) {
         _state.update { state ->
             state.copy(
@@ -219,13 +281,17 @@ class DrawingViewModel: ViewModel() {
                 selectedTextId = null
             )
         }
+        addToHistory(state.value.textElements)
     }
+    private fun onSelectText(id: String?) {
+        _state.update { it.copy(selectedTextId = id) }
+    }
+    
     private fun onCanvasSizeChanged(width: Int, height: Int) {
         _state.update { it.copy(
             canvasWidth = width,
             canvasHeight = height
         ) }
     }
-
 
 }
