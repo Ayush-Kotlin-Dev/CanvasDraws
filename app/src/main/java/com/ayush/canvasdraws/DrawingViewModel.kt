@@ -18,8 +18,9 @@ data class DrawingState(
     // Add these for undo/redo
     val textHistory: List<List<TextElement>> = listOf(emptyList()),
     val currentHistoryIndex: Int = 0,
-    val canUndo: Boolean = false,  // Changed initial value
-    val canRedo: Boolean = false   // Changed initial value
+    val maxHistorySize: Int = 30  ,
+    val canUndo: Boolean = false,
+    val canRedo: Boolean = false
 )
 
 
@@ -161,12 +162,11 @@ class DrawingViewModel: ViewModel() {
     // Text Actions
     private fun addToHistory(textElements: List<TextElement>) {
         _state.update { currentState ->
-            // Remove any future history if we're not at the latest state
             val newHistory = currentState.textHistory
                 .take(currentState.currentHistoryIndex + 1)
+                .takeLast(currentState.maxHistorySize - 1)  // Keep size bounded
                 .toMutableList()
 
-            // Add new state
             newHistory.add(textElements)
             val newIndex = newHistory.size - 1
 
@@ -209,16 +209,24 @@ class DrawingViewModel: ViewModel() {
         }
     }
 
-    // Modify existing text action handlers to add to history
-    private fun onAddTextClick() {
-        val centerX = state.value.canvasWidth / 2f
-        val centerY = state.value.canvasHeight / 2f
+    private fun validateTextElement(element: TextElement): Boolean {
+        return element.text.isNotBlank() &&
+                element.fontSize in 8f..72f &&
+                element.position.x >= 0 &&
+                element.position.y >= 0
+    }
 
+    private fun onAddTextClick() {
         val newText = TextElement(
             id = System.currentTimeMillis().toString(),
             text = "New Text",
-            position = Offset(centerX, centerY)
+            position = Offset(
+                x = state.value.canvasWidth / 2f,
+                y = state.value.canvasHeight / 2f
+            )
         )
+
+        if (!validateTextElement(newText)) return
 
         _state.update { it.copy(
             textElements = it.textElements + newText,

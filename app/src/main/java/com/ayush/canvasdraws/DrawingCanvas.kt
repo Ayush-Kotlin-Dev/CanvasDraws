@@ -38,8 +38,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
 import kotlin.math.abs
+import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
+data class DrawingConfig(
+    val smoothness: Float = 5f,
+    val strokeWidth: Float = 10f,
+    val minDistance: Float = 2f
+)
 @Composable
 fun DrawingCanvas(
     paths: List<PathData>,
@@ -114,8 +121,8 @@ fun DrawingCanvas(
         // Draw text elements
         textElements.forEach { textElement ->
             val isSelected = textElement.id == selectedTextId
-            var offsetX by remember(textElement.position.x) { mutableStateOf(textElement.position.x) }
-            var offsetY by remember(textElement.position.y) { mutableStateOf(textElement.position.y) }
+            var offsetX by remember { mutableStateOf(textElement.position.x) }
+            var offsetY by remember { mutableStateOf(textElement.position.y) }
             var isDragging by remember { mutableStateOf(false) }
 
             Text(
@@ -172,34 +179,37 @@ fun DrawingCanvas(
 private fun DrawScope.drawPath(
     path: List<Offset>,
     color: Color,
-    thickness: Float = 10f
+    config: DrawingConfig = DrawingConfig()
 ) {
-    val smoothedPath = Path().apply {
-        if(path.isNotEmpty()) {
-            moveTo(path.first().x, path.first().y)
+    if (path.size < 2) return
 
-            val smoothness = 5
-            for(i in 1..path.lastIndex) {
-                val from = path[i - 1]
-                val to = path[i]
-                val dx = abs(from.x - to.x)
-                val dy = abs(from.y - to.y)
-                if(dx >= smoothness || dy >= smoothness) {
-                    quadraticTo(
-                        x1 = (from.x + to.x) / 2f,
-                        y1 = (from.y + to.y) / 2f,
-                        x2 = to.x,
-                        y2 = to.y
-                    )
-                }
+    val smoothedPath = Path().apply {
+        moveTo(path.first().x, path.first().y)
+
+        for(i in 1..path.lastIndex) {
+            val from = path[i - 1]
+            val to = path[i]
+            val distance = sqrt(
+                (to.x - from.x).pow(2) +
+                        (to.y - from.y).pow(2)
+            )
+
+            if(distance >= config.minDistance) {
+                quadraticTo(
+                    x1 = (from.x + to.x) / 2f,
+                    y1 = (from.y + to.y) / 2f,
+                    x2 = to.x,
+                    y2 = to.y
+                )
             }
         }
     }
+
     drawPath(
         path = smoothedPath,
         color = color,
         style = Stroke(
-            width = thickness,
+            width = config.strokeWidth,
             cap = StrokeCap.Round,
             join = StrokeJoin.Round
         )
