@@ -2,6 +2,7 @@ package com.ayush.canvasdraws
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -74,7 +75,7 @@ private fun ColorControls(
             Box(
                 modifier = Modifier
                     .graphicsLayer {
-                        val scale = if(isSelected) 1.2f else 1f
+                        val scale = if (isSelected) 1.2f else 1f
                         scaleX = scale
                         scaleY = scale
                     }
@@ -83,7 +84,7 @@ private fun ColorControls(
                     .background(color)
                     .border(
                         width = 2.dp,
-                        color = if(selectedColor == color) Color.Black else Color.Transparent,
+                        color = if (selectedColor == color) Color.Black else Color.Transparent,
                         shape = CircleShape
                     )
                     .clickable { onSelectColor(color) }
@@ -128,7 +129,7 @@ private fun TextControls(
                     )
                 }
             ) {
-                Icon(Icons.Default.Remove, "Decrease font size")
+                Icon(Icons.Filled.Remove, "Decrease font size")
             }
             Text(
                 text = "${selectedTextElement.fontSize.toInt()}",
@@ -143,7 +144,7 @@ private fun TextControls(
                     )
                 }
             ) {
-                Icon(Icons.Default.Add, "Increase font size")
+                Icon(Icons.Filled.Add, "Increase font size")
             }
         }
 
@@ -160,7 +161,15 @@ private fun TextControls(
                 )
             }
             IconButton(
-                onClick = { onUpdateTextStyle(null, null, null, !selectedTextElement.isItalic, null) }
+                onClick = {
+                    onUpdateTextStyle(
+                        null,
+                        null,
+                        null,
+                        !selectedTextElement.isItalic,
+                        null
+                    )
+                }
             ) {
                 Icon(
                     Icons.Outlined.FormatItalic,
@@ -169,7 +178,15 @@ private fun TextControls(
                 )
             }
             IconButton(
-                onClick = { onUpdateTextStyle(null, null, null, null, !selectedTextElement.isUnderline) }
+                onClick = {
+                    onUpdateTextStyle(
+                        null,
+                        null,
+                        null,
+                        null,
+                        !selectedTextElement.isUnderline
+                    )
+                }
             ) {
                 Icon(
                     Icons.Outlined.FormatUnderlined,
@@ -183,7 +200,7 @@ private fun TextControls(
                     contentColor = MaterialTheme.colorScheme.error
                 )
             ) {
-                Icon(Icons.Default.Delete, "Delete text")
+                Icon(Icons.Filled.Delete, "Delete text")
             }
         }
     }
@@ -212,26 +229,44 @@ fun ColumnScope.CanvasControls(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val isTextMode = selectedTextElement != null
+
     // Animated content transition
     AnimatedContent(
-        targetState = selectedTextElement,
+        targetState = isTextMode,
         transitionSpec = {
-            if (targetState != null) {
-                // Entering text controls (sliding from right)
-                (slideInHorizontally { width -> width } + fadeIn()).togetherWith(
-                    slideOutHorizontally { width -> -width } + fadeOut()
+            if (targetState) {
+                (slideInHorizontally(
+                    animationSpec = tween(durationMillis = 300)
+                ) { width -> width } + fadeIn(
+                    animationSpec = tween(durationMillis = 300)
+                )).togetherWith(
+                    slideOutHorizontally(
+                        animationSpec = tween(durationMillis = 300)
+                    ) { width -> -width } + fadeOut(
+                        animationSpec = tween(durationMillis = 300)
+                    )
                 )
             } else {
-                // Entering color controls (sliding from left)
-                (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(
-                    slideOutHorizontally { width -> width } + fadeOut()
+                (slideInHorizontally(
+                    animationSpec = tween(durationMillis = 300)
+                ) { width -> -width } + fadeIn(
+                    animationSpec = tween(durationMillis = 300)
+                )).togetherWith(
+                    slideOutHorizontally(
+                        animationSpec = tween(durationMillis = 300)
+                    ) { width -> width } + fadeOut(
+                        animationSpec = tween(
+                            durationMillis = 300
+                        )
+                    )
                 )
             }.using(
                 SizeTransform(clip = false)
             )
         }
-    ) { targetTextElement ->
-        if (targetTextElement == null) {
+    ) { isInTextMode ->
+        if (!isInTextMode) {
             ColorControls(
                 selectedColor = selectedColor,
                 colors = colors,
@@ -239,12 +274,15 @@ fun ColumnScope.CanvasControls(
                 modifier = modifier
             )
         } else {
-            TextControls(
-                selectedTextElement = targetTextElement,
-                onUpdateTextStyle = onUpdateTextStyle,
-                onDeleteText = onDeleteText,
-                modifier = modifier
-            )
+            // Only show TextControls if we have a valid selectedTextElement
+            selectedTextElement?.let { textElement ->
+                TextControls(
+                    selectedTextElement = textElement,
+                    onUpdateTextStyle = onUpdateTextStyle,
+                    onDeleteText = onDeleteText,
+                    modifier = modifier
+                )
+            }
         }
     }
 
