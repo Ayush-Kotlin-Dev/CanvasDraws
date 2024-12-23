@@ -44,7 +44,6 @@ class MainActivity : ComponentActivity() {
                             currentPath = state.currentPath,
                             textElements = state.textElements,
                             selectedTextId = state.selectedTextId,
-                            isAddingText = state.isAddingText,
                             onAction = { action ->
                                 // Intercept text selection to show editor
                                 if (action is DrawingAction.OnSelectText) {
@@ -91,7 +90,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         )
-                        // Show text editor dialog when text is selected
                         showTextEditor?.let { textId ->
                             state.textElements.find { it.id == textId }?.let { textElement ->
                                 SimpleTextEditDialog(
@@ -113,3 +111,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
+//TODO
+// 1. Settings option ( Add text will add text on Desired location or on center of screen automatically)

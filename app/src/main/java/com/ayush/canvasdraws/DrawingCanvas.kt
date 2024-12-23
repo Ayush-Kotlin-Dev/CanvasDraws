@@ -1,10 +1,21 @@
 package com.ayush.canvasdraws
 
-
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
@@ -15,25 +26,16 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.util.fastForEach
-import kotlin.math.abs
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
-import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.fastForEach
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @Composable
@@ -42,41 +44,40 @@ fun DrawingCanvas(
     currentPath: PathData?,
     textElements: List<TextElement>,
     selectedTextId: String?,
-    isAddingText: Boolean,
     onAction: (DrawingAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+
     Box(modifier = modifier
         .clipToBounds()
         .background(Color.White)
+        .onSizeChanged { canvasSize = it }
         .pointerInput(true) {
             detectTapGestures(
                 onTap = { offset ->
-                    if (isAddingText) {
-                        onAction(DrawingAction.OnTextClick(offset))
-                    } else {
-                        // Check if we clicked on any text
-                        val clickedOnText = textElements.any { textElement ->
-                            val textPosition = IntOffset(
-                                textElement.position.x.roundToInt(),
-                                textElement.position.y.roundToInt()
-                            )
-                            val clickPosition = IntOffset(
-                                offset.x.roundToInt(),
-                                offset.y.roundToInt()
-                            )
-                            val xDiff = (clickPosition.x - textPosition.x)
-                            val yDiff = (clickPosition.y - textPosition.y)
-                            xDiff in 0..100 && yDiff in -20..20
-                        }
+                    // Check if we clicked on any text
+                    val clickedOnText = textElements.any { textElement ->
+                        val textPosition = IntOffset(
+                            textElement.position.x.roundToInt(),
+                            textElement.position.y.roundToInt()
+                        )
+                        val clickPosition = IntOffset(
+                            offset.x.roundToInt(),
+                            offset.y.roundToInt()
+                        )
+                        val xDiff = (clickPosition.x - textPosition.x)
+                        val yDiff = (clickPosition.y - textPosition.y)
+                        xDiff in 0..100 && yDiff in -20..20
+                    }
 
-                        if (!clickedOnText) {
-                            onAction(DrawingAction.OnSelectText(null))
-                            // Draw a point when tapping outside text
-                            onAction(DrawingAction.OnNewPathStart)
-                            onAction(DrawingAction.OnDraw(offset))
-                            onAction(DrawingAction.OnPathEnd)
-                        }
+                    if (!clickedOnText) {
+                        // If we didn't click on text, deselect any selected text
+                        // and draw a point
+                        onAction(DrawingAction.OnSelectText(null))
+                        onAction(DrawingAction.OnNewPathStart)
+                        onAction(DrawingAction.OnDraw(offset))
+                        onAction(DrawingAction.OnPathEnd)
                     }
                 }
             )
@@ -140,6 +141,15 @@ fun DrawingCanvas(
                     }
                     .border(if (isSelected) 1.dp else 0.dp, Color.Black)
             )
+        }
+    }
+
+    LaunchedEffect(canvasSize) {
+        if (canvasSize != IntSize.Zero) {
+            onAction(DrawingAction.OnCanvasSizeChanged(
+                width = canvasSize.width,
+                height = canvasSize.height
+            ))
         }
     }
 }

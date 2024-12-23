@@ -12,7 +12,8 @@ data class DrawingState(
     val paths: List<PathData> = emptyList(),
     val textElements: List<TextElement> = emptyList(),
     val selectedTextId: String? = null,
-    val isAddingText: Boolean = false
+    val canvasWidth: Int = 0,
+    val canvasHeight: Int = 0
 )
 
 
@@ -43,7 +44,6 @@ sealed interface DrawingAction {
 
     // Text Actions
     data object OnAddTextClick : DrawingAction
-    data class OnTextClick(val position: Offset) : DrawingAction
     data class OnUpdateText(val id: String, val newText: String) : DrawingAction
     data class OnUpdateTextStyle(
         val id: String,
@@ -56,6 +56,8 @@ sealed interface DrawingAction {
     data class OnSelectText(val id: String?) : DrawingAction
     data class OnMoveText(val id: String, val newPosition: Offset) : DrawingAction
     data class OnDeleteText(val id: String) : DrawingAction
+    data class OnCanvasSizeChanged(val width: Int, val height: Int) : DrawingAction
+
 
 
 
@@ -85,7 +87,6 @@ class DrawingViewModel: ViewModel() {
             DrawingAction.OnPathEnd -> onPathEnd()
             is DrawingAction.OnSelectColor -> onSelectColor(action.color)
             DrawingAction.OnAddTextClick -> onAddTextClick()
-            is DrawingAction.OnTextClick -> onTextClick(action.position)
             is DrawingAction.OnUpdateText -> onUpdateText(action.id, action.newText)
             is DrawingAction.OnUpdateTextStyle -> onUpdateTextStyle(
                 id = action.id,
@@ -98,6 +99,8 @@ class DrawingViewModel: ViewModel() {
             is DrawingAction.OnSelectText -> onSelectText(action.id)
             is DrawingAction.OnMoveText -> onMoveText(action.id, action.newPosition)
             is DrawingAction.OnDeleteText -> onDeleteText(action.id)
+            is DrawingAction.OnCanvasSizeChanged -> onCanvasSizeChanged(action.width, action.height)
+
 
         }
     }
@@ -145,23 +148,21 @@ class DrawingViewModel: ViewModel() {
 
     // Text Actions
     private fun onAddTextClick() {
-        _state.update { it.copy(isAddingText = true) }
+        val centerX = state.value.canvasWidth / 2f
+        val centerY = state.value.canvasHeight / 2f
+
+        val newText = TextElement(
+            id = System.currentTimeMillis().toString(),
+            text = "New Text",
+            position = Offset(centerX, centerY)
+        )
+
+        _state.update { it.copy(
+            textElements = it.textElements + newText,
+            selectedTextId = newText.id
+        ) }
     }
 
-    private fun onTextClick(position: Offset) {
-        if (state.value.isAddingText) {
-            val newText = TextElement(
-                id = System.currentTimeMillis().toString(),
-                text = "New Text",
-                position = position
-            )
-            _state.update { it.copy(
-                textElements = it.textElements + newText,
-                isAddingText = false,
-                selectedTextId = newText.id
-            ) }
-        }
-    }
 
     private fun onUpdateText(id: String, newText: String) {
         _state.update { state ->
@@ -217,4 +218,12 @@ class DrawingViewModel: ViewModel() {
             )
         }
     }
+    private fun onCanvasSizeChanged(width: Int, height: Int) {
+        _state.update { it.copy(
+            canvasWidth = width,
+            canvasHeight = height
+        ) }
+    }
+
+
 }
