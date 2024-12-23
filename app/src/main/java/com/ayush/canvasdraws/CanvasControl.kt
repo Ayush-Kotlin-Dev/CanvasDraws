@@ -99,7 +99,9 @@ private fun ColorControls(
                     .background(color)
                     .border(
                         width = 2.dp,
-                        color = if (selectedColor == color) Color.Black else Color.Transparent,
+                        color = if (isSelected) 
+                            MaterialTheme.colorScheme.primary 
+                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                         shape = CircleShape
                     )
                     .clickable { onSelectColor(color) }
@@ -135,19 +137,26 @@ private fun TextControls(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box {
-            IconButton(onClick = { expandedFontDropdown = true }) {
+            IconButton(onClick = { expandedFontDropdown = true }, 
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(
                         Icons.Default.TextFormat,
-                        contentDescription = "Change font family"
+                        contentDescription = "Change font family",
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Icon(
                         Icons.Default.ArrowDropDown,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -189,7 +198,11 @@ private fun TextControls(
                         (selectedTextElement.fontSize - 2f).coerceAtLeast(12f),
                         null, null, null , null
                     )
-                }
+                },
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
                 Icon(Icons.Filled.Remove, "Decrease font size")
             }
@@ -204,7 +217,11 @@ private fun TextControls(
                         (selectedTextElement.fontSize + 2f).coerceAtMost(32f),
                         null, null, null , null
                     )
-                }
+                },
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
                 Icon(Icons.Filled.Add, "Increase font size")
             }
@@ -214,12 +231,19 @@ private fun TextControls(
             modifier = Modifier.horizontalScroll(rememberScrollState())
         ) {
             IconButton(
-                onClick = { onUpdateTextStyle(null, null, !selectedTextElement.isBold, null, null, null) }
+                onClick = { onUpdateTextStyle(null, null, !selectedTextElement.isBold, null, null, null) },
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = if (selectedTextElement.isBold) 
+                        MaterialTheme.colorScheme.primary 
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    containerColor = if (selectedTextElement.isBold)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surface
+                )
             ) {
                 Icon(
                     Icons.Outlined.FormatBold,
-                    contentDescription = "Bold",
-                    tint = if (selectedTextElement.isBold) MaterialTheme.colorScheme.primary else Color.Gray
+                    contentDescription = "Bold"
                 )
             }
             IconButton(
@@ -232,12 +256,19 @@ private fun TextControls(
                         null,
                         null
                     )
-                }
+                },
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = if (selectedTextElement.isItalic) 
+                        MaterialTheme.colorScheme.primary 
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    containerColor = if (selectedTextElement.isItalic)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surface
+                )
             ) {
                 Icon(
                     Icons.Outlined.FormatItalic,
-                    contentDescription = "Italic",
-                    tint = if (selectedTextElement.isItalic) MaterialTheme.colorScheme.primary else Color.Gray
+                    contentDescription = "Italic"
                 )
             }
             IconButton(
@@ -250,17 +281,25 @@ private fun TextControls(
                         !selectedTextElement.isUnderline,
                         null
                     )
-                }
+                },
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = if (selectedTextElement.isUnderline) 
+                        MaterialTheme.colorScheme.primary 
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    containerColor = if (selectedTextElement.isUnderline)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surface
+                )
             ) {
                 Icon(
                     Icons.Outlined.FormatUnderlined,
-                    contentDescription = "Underline",
-                    tint = if (selectedTextElement.isUnderline) MaterialTheme.colorScheme.primary else Color.Gray
+                    contentDescription = "Underline"
                 )
             }
             IconButton(
                 onClick = onDeleteText,
                 colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.error
                 )
             ) {
@@ -370,9 +409,16 @@ fun ColumnScope.CanvasControls(
     ) {
         Button(
             onClick = onAddText,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         ) {
-            Text("Add Text")
+            Text(
+                "Add Text",
+                style = MaterialTheme.typography.labelLarge
+            )
         }
         Button(
             onClick = {
@@ -398,15 +444,16 @@ fun ColumnScope.CanvasControls(
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (showClearConfirmation)
                     MaterialTheme.colorScheme.errorContainer
-                else MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.error,
+                contentColor = if (showClearConfirmation)
+                    MaterialTheme.colorScheme.onErrorContainer
+                else MaterialTheme.colorScheme.onError
             ),
             modifier = Modifier.weight(1f)
         ) {
             Text(
                 if (showClearConfirmation) "Click to Confirm" else "Clear All",
-                color = if (showClearConfirmation)
-                    MaterialTheme.colorScheme.onErrorContainer
-                else MaterialTheme.colorScheme.onError
+                style = MaterialTheme.typography.labelLarge
             )
         }
     }
